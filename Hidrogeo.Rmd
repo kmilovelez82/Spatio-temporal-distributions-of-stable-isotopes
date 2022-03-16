@@ -1,0 +1,1264 @@
+---
+title: "Groundwater recharge processes inferred from isoscapes in the Buenos Aires Province, Argentina"
+author: "Mauricio Quiroz, Asunción Romanelli and Camilo Vélez"
+date: "07/12/2021"
+output: 
+html_document:
+  toc: true
+  toc_float: true
+  theme: darkly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(kableExtra)
+library(gridExtra)
+library(rstatix)
+```
+
+
+## **Análisis descriptivos**    
+
+### **Importar base de datos**
+```{r}
+datos <- read.csv("datos.csv", header = T, dec = ".", sep = ",")
+```
+
+```{r echo = FALSE}
+kable(datos, align = "ccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),   full_width = F) %>% 
+  scroll_box(height = "300px", width = "900px")
+```
+
+### **Resumen estadístico**
+
+```{r echo = F}
+r.sta <- rstatix::get_summary_stats(datos[,c(6:9)], type = "full", show = c("n", "min", "max", "mean", "median", "iqr", "sd", "se", "ci"))
+r.sta <- r.sta[c(1,3,4,2),]
+
+CV <- sapply(datos[,c(6:9)], function(x) sd(x, na.rm=T) / mean(x, na.rm=T) * 100)##función para calcular el coeficiente de variación por columna#
+CV <- as.data.frame(abs(CV))
+
+r.sta$CV <- CV$`abs(CV)`
+
+col <- c("Variable", "n", "Min", "Max", "Media", "Mediana", "IQR", "DS", "E.St", "I.C", "CV")
+
+kable(r.sta, digits = 1, align = "lcccccccccc", col.names = col) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+
+## **Sitios con múltiples mediciones**
+
+```{r echo = FALSE}
+
+tabla1 <- as.data.frame(table(datos$Estacion_Id))
+
+tabla2 <- as.data.frame(table(datos$Estacion_Id)) %>% filter(Freq > 4) %>% arrange(desc(Freq))
+
+tabla3 <- as.data.frame(table(tabla1$Freq))
+colnames(tabla3) <- c("Mediciones", "No. Sitios")
+```
+
+```{r echo = FALSE}
+p1 <- gridExtra::tableGrob(tabla3, rows = NULL)
+```
+
+```{r echo = FALSE}
+
+p2 <- ggplot(tabla2, aes(x = Var1, y = Freq)) + 
+  geom_col(stat = "identity") + 
+  scale_y_continuous(limit = c(0,13), breaks = c(4, 6, 8, 10, 12)) + 
+  scale_x_discrete(limits = tabla2$Var1, labels = NULL) + 
+  geom_text(aes(label = Var1), vjust = -0.2, angle = 45, nudge_y = 0.4,   nudge_x = 0.5, size = 3) +
+  labs(x = "Sitios de muestreo", y = "") +
+  theme_classic()
+```
+
+```{r echo = FALSE, fig.width = 10, fig.height = 6}
+
+grid.arrange(p2, p1, ncol = 2, widths = c(3, 1))
+```
+
+```{r echo = F}
+
+datos$Sitios <-  rep("BA", 1139)
+
+datos2 <- datos %>% 
+  filter(Estacion_Id %in% c("G073", "G194", "G020", "G195", "G196", "G156", "G792", "G793", "G794", "G827", "G071", "G1133", "G178", "G179", "G220"))
+```
+
+
+### **Datos atípicos en sitios con más de seis mediciones**
+En este caso, la detección de valores atípicos permiten llevar un control de la reproducibilidad de los métodos utilizados en la cuantificación de las variables.
+
+```{r echo = F}
+Cond.outliers <- datos2 %>% 
+  group_by(Estacion_Id) %>% 
+  identify_outliers(Conductividad)
+
+X18O.outliers <- datos2 %>% 
+  group_by(Estacion_Id) %>% 
+  identify_outliers(X18O)
+
+X2H.outliers <- datos2 %>% 
+  group_by(Estacion_Id) %>% 
+  identify_outliers(X2H)
+
+excess.outliers <- datos2 %>% 
+  group_by(Estacion_Id) %>% 
+  identify_outliers(d.excess)
+
+outliers <- rbind(Cond.outliers, X18O.outliers, X2H.outliers, excess.outliers)
+
+outliers <- outliers %>% 
+  filter(is.outlier == TRUE) %>% 
+  select(-c(2:5,10,12)) %>% 
+  arrange(Estacion_Id)
+
+outliers <- unique(outliers)
+```
+
+```{r echo = FALSE, fig.width = 10, fig.height = 14}
+
+p3 <- ggplot(data = datos2, aes(x = Estacion_Id, y = Conductividad, fill = Sitios)) +
+  geom_point(shape = 16, size=2, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_boxplot(fill = "darkorchid4", color = "black", size = 0.2, alpha = 0.3, position = position_dodge(width = 1), outlier.colour = "red") +
+  labs(x = NULL, y = "Conductividad") +
+  theme_bw()
+
+p4 <- ggplot(data = datos2, aes(x = Estacion_Id, y = X18O, fill = Sitios)) +
+  geom_point(shape = 16, size=2, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_boxplot(fill = "darkorchid4", color = "black", size = 0.2, alpha = 0.3, position = position_dodge(width = 1), outlier.colour = "red") +
+  labs(x = NULL, y = expression(bold(delta ^18*O))) +
+  ylim(c(-6.2,-3)) +
+  theme_bw()
+
+p5 <- ggplot(data = datos2, aes(x = Estacion_Id, y = X2H, fill = Sitios)) +
+  geom_point(shape = 16, size=2, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_boxplot(fill = "darkorchid4", color = "black", size = 0.2, alpha = 0.3, position = position_dodge(width = 1), outlier.colour = "red") +
+  labs(x = NULL, y = expression(bold(delta ^2*H))) +
+  ylim(c(-40,-22)) +
+  theme_bw()
+
+p6 <- ggplot(data = datos2, aes(x = Estacion_Id, y = d.excess, fill = Sitios)) +
+  geom_point(shape = 16, size=2, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_boxplot(fill = "darkorchid4", color = "black", size = 0.2, alpha = 0.3, position = position_dodge(width = 1), outlier.colour = "red") +
+  labs(x = NULL, y = "d-excess") +
+  theme_bw()
+
+grid.arrange(p3, p4, p5, p6, nrow = 4, ncol = 1)
+
+```
+
+```{r echo = FALSE}
+
+kable(outliers, digits = 1, align = "cccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = T) %>% 
+  scroll_box(height = "300px", width = "900px")
+```
+
+### **Detección de valores atípicos en la base de datos completa**
+
+Se detectaron 20 datos atípicos en aquellos sitios que muestras más de cinco mediciones. De este modo la matriz pasa de 1139 a tener 1119 datos. A continuación se busca encontrar valores extremos utilizando la base completa.
+
+```{r, echo = F}
+datos3 <- datos %>% 
+  anti_join(outliers, by = c("Estacion_Id", "Conductividad", "X18O", "X2H", "d.excess"))
+```
+
+**Conductividad**
+
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+
+Cond.outliers2 <- datos3 %>% ##detección de outliers de la base completa##
+  identify_outliers(Conductividad) %>% 
+  filter(is.extreme == TRUE) %>% 
+  select(c(1:2,6:10,12)) %>% 
+  arrange(Conductividad)
+
+p7 <- ggplot(data = datos3 %>% filter(Conductividad < 2800), aes(x = Sitios, y = Conductividad, fill = Sitios)) + 
+  geom_point(shape = 16, size=1.5, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_point(data = Cond.outliers2, aes(x = Sitios, y = Conductividad), color = "red", shape = 16, size = 1.5, alpha = 0.5, position = position_jitterdodge(), show.legend = F) +
+  geom_violin(fill = "darkorchid4", color = NA, size = 1, alpha = 0.3,  position = position_dodge()) +
+  labs(x = NULL, y = "Conductivity", title = "Se detectaron 42 valores extremos") +
+  scale_x_discrete(labels = NULL) +
+  theme(plot.margin = margin(0.6, unit = "cm")) +
+  theme_bw()
+
+```
+
+<div class = "row">
+<div class = "col-md-6">
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+kable(Cond.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left") %>% 
+  scroll_box(height = "300px", width = "450px")
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+p7 ###outliers conductividad###
+```
+</div>
+</div>
+
+
+**Oxígeno-18**
+
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+
+X18O.outliers2 <- datos3 %>% ##detección de outliers de la base completa##
+  identify_outliers(X18O) %>% 
+  filter(is.extreme == TRUE) %>% 
+  select(c(1:2,6:10,12)) %>% 
+  arrange(X18O)
+
+p8 <- ggplot(data = datos3 %>% filter(between(X18O, -8.10, -2.48)), aes(x = Sitios, y = X18O, fill = Sitios)) +
+  geom_point(shape = 16, size=1.5, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_point(data = X18O.outliers2, aes(x = Sitios, y = X18O), color = "red", shape = 16, size = 1.5, alpha = 0.5, position = position_jitterdodge(), show.legend = F) +
+  geom_violin(trim = F, fill = "darkorchid4", color = NA, size = 1, alpha = 0.3,  position = position_dodge()) +
+  labs(x = NULL, y = expression(bold(delta ^18*O)), title = "Se detectaron 36 valores extremos") +
+  scale_x_discrete(labels = NULL) +
+  theme_bw()
+
+```
+
+<div class = "row">
+<div class = "col-md-6">
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+kable(X18O.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
+  scroll_box(height = "300px", width = "450px")
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+p8 ###outliers oxígeno 18###
+```
+</div>
+</div>
+
+
+**Hidrógeno-2**
+
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+
+X2H.outliers2 <- datos3 %>% ##detección de outliers de la base completa##
+  identify_outliers(X2H) %>% 
+  filter(is.extreme == TRUE) %>% 
+  select(c(1:2,6:10,12)) %>% 
+  arrange(X2H)
+
+p9 <- ggplot(data = datos3 %>% filter(between(X2H, -50.40, -7.30)), aes(x = Sitios, y = X2H, fill = Sitios)) +
+  geom_point(shape = 16, size=1.5, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_point(data = X2H.outliers2, aes(x = Sitios, y = X2H), color = "red", shape = 16, size = 1.5, alpha = 0.5, position = position_jitterdodge(), show.legend = F) +
+  geom_violin(trim = F, fill = "darkorchid4", color = NA, size = 1, alpha = 0.3,  position = position_dodge(width = 0.6)) +
+  labs(x = NULL, y = expression(bold(delta ^2*H)), title = "Se detectaron 22 valores extremos") +
+  scale_x_discrete(labels = NULL) +
+  theme_bw()
+
+```
+
+<div class = "row">
+<div class = "col-md-6">
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+kable(X2H.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
+  scroll_box(height = "300px", width = "450px")
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+p9 ###outliers deuterio###
+```
+</div>
+</div>
+
+
+**Exceso**
+
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+
+excess.outliers2 <- datos3 %>% ##detección de outliers de la base completa##
+  identify_outliers(d.excess) %>% 
+  filter(is.extreme == TRUE) %>% 
+  select(c(1:2,6:10,12)) %>% 
+  arrange(d.excess)
+
+p10 <- ggplot(data = datos3 %>% filter(between(d.excess, -0.60, 27.08)), aes(x = Sitios, y = d.excess, fill = Sitios)) +
+  geom_point(shape = 16, size=1.5, position = position_jitterdodge(), color = "aquamarine4", alpha = 0.5, show.legend = F) +
+  geom_point(data = excess.outliers2, aes(x = Sitios, y = d.excess), color = "red", shape = 16, size = 1.5, alpha = 0.5, position = position_jitterdodge(), show.legend = F) +
+  geom_violin(trim = F, fill = "darkorchid4", color = NA, size = 1, alpha = 0.3,  position = position_dodge(width = 0.6)) +
+  labs(x = NULL, y = "d-excess", title = "Se detectaron 11 valores extremos") +
+  scale_x_discrete(labels = NULL) +
+  theme_bw()
+
+```
+
+<div class = "row">
+<div class = "col-md-6">
+```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
+kable(excess.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
+  scroll_box(height = "300px", width = "450px")
+  
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+p10 ###outliers exceso###
+```
+</div>
+</div>
+
+
+### **Pruebas de normalidad (Shapiro-Wilks) por variable excluyendo los valores extremos**
+
+#### Conductividad
+La prueba de Shapiro y el gráfico de cuantiles muestra que esta variable no se ajusta a una distribución normal a pesar de eliminar los valores extremos.
+
+```{r echo = F}
+
+##Boxplot##
+p11 <- ggplot(
+  data = datos3 %>% filter(Conductividad < 2800), 
+  aes(x = Sitios, y = Conductividad, fill = Sitios)
+  ) +
+  geom_point(
+    shape = 16,
+    size = 2,
+    position = position_jitterdodge(),
+    color = "darkorchid4",
+    show.legend = F, 
+    alpha = 0.5
+  ) +
+    geom_boxplot(
+    width = 0.4,
+    notch = TRUE, 
+    outlier.shape = NA, 
+    color = "black",
+    lwd = 1,
+    fill = "darkorchid4",
+    alpha = 0.7,
+    show.legend = F
+    ) + 
+  geom_violin(
+    fill = "darkorchid4", 
+    color = NA, 
+    alpha = 0.3,
+    position = position_dodge(width = 0.5), size = 1, color = NA,
+    trim = F
+    ) +
+    labs(
+    x = NULL, 
+    y = "Conductivity"
+    ) + 
+  scale_x_discrete(
+    labels = NULL
+    ) +
+  theme_bw()
+
+##Histograma con probabilidad de densidad##
+p12 <- ggplot (
+  datos3 %>% filter(Conductividad < 2800),
+  aes(x = Conductividad)
+  ) +
+  geom_histogram(
+    aes(y = ..density..), 
+    colour = "#E69F00", 
+    fill = "white", 
+    size = 0.9
+    ) +
+  geom_vline(
+    aes(xintercept = 1036.734), 
+    color = "blue",  
+    linetype = "dashed", 
+    size = 1, 
+    na.rm=TRUE
+    ) +
+  geom_density(
+    colour= "#E69F00", 
+    fill="#E69F00",
+    alpha=0.6, 
+    size = 0.5
+    ) +
+  labs(
+    title="Histograma Conductividad", 
+    x = "Conductividad", 
+    y = "Densidad"
+    ) +
+  theme_minimal()
+
+##Q-Q plot##
+p13 <- ggqqplot(
+  data = datos3 %>% filter(Conductividad < 2800),
+  x = "Conductividad",
+  color = "#00AFBB",
+  title = expression(paste("Valor p = 5.23x10" ^-17)),
+  xlab = "Distribución teórica",
+  ylab = "Muestra",
+  )
+
+```
+
+```{r fig.width = 12, fig.height = 3}
+grid.arrange(p11, p12, p13, ncol = 3, nrow = 1)
+```
+
+#### Oxígeno-18
+
+```{r echo = F}
+
+##Boxplot##
+p14 <- ggplot(
+  data = datos3 %>% filter(between(X18O, -8.10, -2.48)), 
+  aes(x = Sitios, y = X18O, fill = Sitios)
+  ) +
+  geom_point(
+    shape = 16,
+    size = 2,
+    position = position_jitterdodge(),
+    color = "darkorchid4",
+    show.legend = F, 
+    alpha = 0.5
+  ) +
+    geom_boxplot(
+    width = 0.4,
+    notch = TRUE, 
+    outlier.shape = NA, 
+    color = "black",
+    lwd = 1,
+    fill = "darkorchid4",
+    alpha = 0.7,
+    show.legend = F
+    ) + 
+  geom_violin(
+    fill = "darkorchid4", 
+    color = NA, 
+    alpha = 0.3,
+    position = position_dodge(width = 0.5), size = 1, color = NA,
+    trim = F
+    ) +
+    labs(
+    x = NULL, 
+    y = expression(delta ^18*O)
+    ) + 
+  scale_x_discrete(
+    labels = NULL
+    ) +
+  theme_bw()
+
+##Histograma con probabilidad de densidad##
+p15 <- ggplot (
+  datos3 %>% filter(between(X18O, -8.10, -2.48)),
+  aes(x = X18O)
+  ) +
+  geom_histogram(
+    aes(y = ..density..), 
+    colour = "#E69F00", 
+    fill = "white", 
+    size = 0.9
+    ) +
+  geom_vline(
+    aes(xintercept = -5.14), 
+    color = "blue",  
+    linetype = "dashed", 
+    size = 1, 
+    na.rm=TRUE
+    ) +
+  geom_density(
+    colour= "#E69F00", 
+    fill="#E69F00",
+    alpha=0.6, 
+    size = 0.5
+    ) +
+  labs(
+    title = expression(paste("Histograma ", delta ^18*O)),
+    x = expression(delta ^18*O), 
+    y = "Densidad"
+    ) +
+  theme_minimal()
+
+##Q-Q plot##
+p16 <- ggqqplot(
+  data = datos3 %>% filter(between(X18O, -8.10, -2.48)),
+  x = "X18O",
+  color = "#00AFBB",
+  title = expression(paste("Valor p = 2.3x10" ^-22)),
+  xlab = "Distribución teórica",
+  ylab = "Muestra"
+)
+
+```
+
+```{r fig.width = 12, fig.height = 3}
+grid.arrange(p14, p15, p16, ncol = 3, nrow = 1)
+```
+
+#### Hidrógeno-2
+
+```{r echo = F}
+
+##Boxplot##
+p17 <- ggplot(
+  data = datos3 %>% filter(between(X2H, -50.40, -7.30)), 
+  aes(x = Sitios, y = X2H, fill = Sitios)
+  ) +
+  geom_point(
+    shape = 16,
+    size = 2,
+    position = position_jitterdodge(),
+    color = "darkorchid4",
+    show.legend = F, 
+    alpha = 0.5
+  ) +
+    geom_boxplot(
+    width = 0.4,
+    notch = TRUE, 
+    outlier.shape = NA, 
+    color = "black",
+    lwd = 1,
+    fill = "darkorchid4",
+    alpha = 0.7,
+    show.legend = F
+    ) + 
+  geom_violin(
+    fill = "darkorchid4", 
+    color = NA, 
+    alpha = 0.3,
+    position = position_dodge(width = 0.5), size = 1, color = NA,
+    trim = F
+    ) +
+    labs(
+    x = NULL, 
+    y = expression(delta ^2*H), 
+    ) + 
+  scale_x_discrete(
+    labels = NULL
+    ) +
+  theme_bw()
+
+##Histograma con probabilidad de densidad##
+p18 <- ggplot (
+  datos3 %>% filter(between(X2H, -50.40, -7.30)),
+  aes(x = X2H)
+  ) +
+  geom_histogram(
+    aes(y = ..density..), 
+    colour = "#E69F00", 
+    fill = "white", 
+    size = 0.9
+    ) +
+  geom_vline(
+    aes(xintercept = -28.8), 
+    color = "blue",  
+    linetype = "dashed", 
+    size = 1, 
+    na.rm=TRUE
+    ) +
+  geom_density(
+    colour= "#E69F00", 
+    fill="#E69F00",
+    alpha=0.6, 
+    size = 0.5
+    ) +
+  labs(
+    title = expression(paste("Histograma ", delta ^2*H)), 
+    x = expression(delta ^2*H), 
+    y = "Densidad"
+    ) +
+  theme_minimal()
+
+##Q-Q plot##
+p19 <- ggqqplot(
+  data = datos3 %>% filter(between(X2H, -50.40, -7.30)),
+  x = "X2H",
+  color = "#00AFBB",
+  title = expression(paste("Valor p = 1.04x10" ^-18)),
+  xlab = "Distribución teórica",
+  ylab = "Muestra"
+)
+
+```
+
+```{r fig.width = 12, fig.height = 3}
+grid.arrange(p17, p18, p19, ncol = 3, nrow = 1)
+```
+
+
+#### Exceso...
+
+```{r echo = F}
+
+##Boxplot##
+p20 <- ggplot(
+  data = datos3 %>% filter(between(d.excess, -0.60, 27.08)), 
+  aes(x = Sitios, y = d.excess, fill = Sitios)
+  ) +
+  geom_point(
+    shape = 16,
+    size = 2,
+    position = position_jitterdodge(),
+    color = "darkorchid4",
+    show.legend = F, 
+    alpha = 0.5
+  ) +
+    geom_boxplot(
+    width = 0.4,
+    notch = TRUE, 
+    outlier.shape = NA, 
+    color = "black",
+    lwd = 1,
+    fill = "darkorchid4",
+    alpha = 0.7,
+    show.legend = F
+    ) + 
+  geom_violin(
+    fill = "darkorchid4", 
+    color = NA, 
+    alpha = 0.3,
+    position = position_dodge(width = 0.5), size = 1, color = NA,
+    trim = F
+    ) +
+    labs(
+    x = NULL, 
+    y = "d-excess"
+    ) + 
+  scale_x_discrete(
+    labels = NULL
+    ) +
+  theme_bw()
+
+##Histograma con probabilidad de densidad##
+p21 <- ggplot (
+  datos3 %>% filter(between(d.excess, -0.60, 27.08)),
+  aes(x = d.excess)
+  ) +
+  geom_histogram(
+    aes(y = ..density..), 
+    colour = "#E69F00", 
+    fill = "white", 
+    size = 0.9
+    ) +
+  geom_vline(
+    aes(xintercept = 12.07), 
+    color = "blue",  
+    linetype = "dashed", 
+    size = 1, 
+    na.rm=TRUE
+    ) +
+  geom_density(
+    colour= "#E69F00", 
+    fill="#E69F00",
+    alpha=0.6, 
+    size = 0.5
+    ) +
+  labs(
+    title="Histograma Exceso", 
+    x = "Exceso", 
+    y = "Densidad"
+    ) +
+  theme_minimal()
+
+##Q-Q plot##
+p22 <- ggqqplot(
+  data = datos3 %>% filter(between(d.excess, -0.60, 27.08)),
+  x = "d.excess",
+  color = "#00AFBB",
+  title = expression(paste("Valor p = 5.9x10" ^-14)),
+  xlab = "Distribución teórica",
+  ylab = "Muestra"
+)
+```
+
+```{r fig.width = 12, fig.height = 3}
+grid.arrange(p20, p21, p22, ncol = 3, nrow = 1)
+```
+
+## **Análisis de Correlación**
+
+```{r echo = F, fig.align = "center"}
+library(GGally)
+
+reg1 <- datos3 %>% 
+  filter(
+    Conductividad < 2800 & 
+      between(X18O, -8.10, -2.48) & 
+      between(X2H, -50.40, -7.30) & 
+      between(d.excess, -0.60, 27.08)
+    ) %>% 
+  select(
+    Estacion_Id, 
+    Conductividad, 
+    X18O, 
+    X2H, 
+    d.excess
+    )
+
+reg2 <- datos3 %>% 
+  filter(
+    between(X18O, -8.10, -2.48) &
+      between(X2H, -50.40, -7.30) & 
+      between(d.excess, -0.60, 27.08)
+    ) %>% 
+  select(
+    Estacion_Id, 
+    X18O, 
+    X2H, 
+    d.excess
+    )
+
+
+p23 <- ggpairs(
+  reg1[,-1],
+  lower = list(continuous = wrap("smooth", pch = 16, alpha = 0.3, color = "darkorchid4")),
+  diag = list(continuous = wrap("barDiag", color = "white", fill = "#E69F00")), 
+  axisLabels = "none",
+  title = "Filtrando la base de datos por conductividad: 609 datos"
+  ) +
+  theme_bw()
+
+p23
+
+p24 <- ggpairs(
+  reg2[,-1],
+  lower = list(continuous = wrap("smooth", pch = 16, alpha = 0.3, color = "darkorchid4")),
+  diag = list(continuous = wrap("barDiag", color = "white", fill = "#E69F00")), 
+  axisLabels = "none",
+  title = "Sin la variable conductividad: 1083 datos"
+  ) +
+  theme_bw()
+
+p24
+
+```
+
+## **Análisis de Regresión**
+
+### Modelo de Regresión Hidrógeno-2 vs Oxígeno-18
+
+```{r echo = F, fig.align = "center"}
+library(ggstatsplot)
+library(ggfortify) ##gráficos para corroborar los supuestos del modelo##
+library(ggside)
+library(gdata) ## cbin para vectores desiguales##
+```
+
+<div class = "row">
+  <div class = "col-md-6">
+```{r echo = F, fig.align = "center"}
+p25 <- ggscatterstats(
+  data = reg2,
+  x = X18O,
+  y = X2H,
+  type = "nonparametric",
+  results.subtitle = FALSE,
+  xlab = expression(delta ^18*O),
+  ylab = expression(delta ^2*H),
+  marginal = T,
+  marginal.type = "histogram",
+  margins = "both",
+  )
+
+p25
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+model1 <- lm(data = reg2, X2H ~ X18O)
+
+p26 <- autoplot(
+  model1
+  ) + 
+  geom_point(
+    size = 1,
+    alpha = 0.3
+  ) +
+  theme_bw()
+
+p26
+```
+</div>
+</div>
+
+```{r echo = F}
+library(stargazer)
+
+stargazer(
+  model1, 
+  type = "text", 
+  title = "Estadísticos de regresión del modelo 1", 
+  style = "all2",
+  single.row = T)
+```
+
+### Modelo de Regresión d-excess vs Oxígeno-18
+
+<div class = "row">
+  <div class = "col-md-6">
+```{r echo = F, fig.align = "center"}
+p27 <- ggscatterstats(
+  data = reg2,
+  x = X18O,
+  y = d.excess,
+  type = "nonparametric",
+  results.subtitle = FALSE,
+  xlab = expression(delta ^18*O),
+  ylab = "d-excess",
+  marginal = T,
+  marginal.type = "histogram",
+  margins = "both",
+  )
+
+p27
+```
+</div>
+
+<div class = "col-md-6">
+```{r echo = F}
+model2 <- lm(data = reg2, d.excess ~ X18O)
+
+p28 <- autoplot(
+  model2
+  ) + 
+  geom_point(
+    size = 1,
+    alpha = 0.3
+  ) +
+  theme_bw()
+
+p28
+```
+</div>
+</div>
+
+```{r echo = F}
+stargazer(
+  model2, 
+  type = "text", 
+  title = "Estadísticos de regresión del modelo 2", 
+  style = "all2",
+  single.row = T)
+```
+
+## **Non-Metric Dimensional Scaling (NMDS)**
+
+```{r echo = F}
+library(vegan)
+library(BiodiversityR)
+library(ggplot2)
+library(readxl)
+library(ggsci)
+library(ggrepel)
+library(ggforce)
+
+BioR.theme <- theme(
+  panel.background = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.line = element_line("gray25"),
+  text = element_text(size = 12),
+  axis.text = element_text(size = 10, colour = "gray25"),
+  axis.title = element_text(size = 14, colour = "gray25"),
+  legend.title = element_text(size = 14),
+  legend.text = element_text(size = 14),
+  legend.key = element_blank())
+```
+
+
+```{r echo = F, fig.align = "center"}
+datos4 <- datos[,c(1,3,4,7:9)]
+datos4 <- aggregate(
+  . ~ Estacion_Id, 
+  data = datos4, 
+  mean, 
+  na.rm = FALSE, 
+  na.action = NULL
+  ) ##datos promediando los valores de cada sitios##
+
+row.names(datos4) <- datos4$Estacion_Id
+datos4 <- datos4[,-1]
+
+data.mds <- metaMDS(
+  datos4[-c(348, 583, 42),], 
+  distance = "euclidian", 
+  autotransform = F, 
+  noshare = F, 
+  wascores = F, 
+  na.rm = T
+  )
+
+ex <- ordiplot(
+  data.mds, 
+  choices = c(1,2),
+  type = "none"
+  )
+
+### NMDS con líneas de contorno de los valores de oxígeno-18###
+
+ex.surface1 <- ordisurf(
+  ex, 
+  datos4[-c(348, 583, 42),]$X18O, 
+  add = T, 
+  nlevels = 30
+  )
+
+ex.grid1 <- ordisurfgrid.long(
+  ex.surface1
+  )
+
+sites.long2 <- sites.long(
+  ex, 
+  env.data = datos4[-c(348, 583, 42),]
+  )
+
+MDSxy <- data.frame(data.mds$points)
+ID2 <- MDSxy %>% 
+  filter(
+    MDS1 <= - 10 | MDS1 >= 10
+    )
+
+ID3 <- MDSxy %>% 
+  filter(
+    MDS2 <= - 8 | MDS2 >= 8
+    )
+
+p29 <- ggplot() + 
+    geom_contour_filled(
+      data=ex.grid1,
+      aes(x=x, y=y, z=z)
+      ) +
+    geom_vline(
+      xintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +
+    geom_hline(
+      yintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +  
+    scale_x_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    scale_y_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    geom_point(
+      data=sites.long2, 
+      aes(x=axis1, y=axis2),
+      alpha = 0.5, 
+      pch = 16
+      ) +
+    labs(x = "NMDS1", 
+         y = "NMDS2"
+      ) +
+  geom_text(
+    data = ID2,
+    aes(MDS1, MDS2, label = row.names(ID2)), 
+    size = 2.5,
+    nudge_y = 0.5,
+    check_overlap = T,
+    ) +
+  geom_text(data = ID3,
+    aes(MDS1, MDS2, label = row.names(ID3)), 
+    size = 2.5,
+    nudge_y = 0.5,
+    check_overlap = T
+    ) +
+    BioR.theme +
+    scale_fill_viridis_d() +
+    labs(
+      fill = expression(delta ^18*O)
+      ) +
+    coord_fixed(ratio=1)
+
+p29
+```
+
+
+```{r echo = F, fig.align = "center"}
+### NMDS con líneas de contorno de los valores de hidrógeno-2###
+ex <- ordiplot(
+  data.mds, 
+  choices = c(1,2)
+  )
+
+ex.surface2 <- ordisurf(
+  ex, 
+  datos4[-c(348, 583, 42),]$X2H, 
+  add = T, 
+  nlevels = 30
+  )
+
+ex.grid2 <- ordisurfgrid.long(
+  ex.surface2
+  )
+
+p30 <- ggplot() + 
+    geom_contour_filled(
+      data=ex.grid2,
+      aes(x=x, y=y, z=z)
+      ) +
+    geom_vline(
+      xintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +
+    geom_hline(
+      yintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +  
+    scale_x_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    scale_y_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    geom_point(
+      data=sites.long2, 
+      aes(x=axis1, y=axis2),
+      alpha = 0.5, 
+      pch = 16
+      ) +
+    labs(x = "NMDS1", 
+         y = "NMDS2"
+      ) +
+    geom_text(
+      data = ID2,
+      aes(MDS1, MDS2, label = row.names(ID2)), 
+      size = 2.5,
+      nudge_y = 0.5,
+      check_overlap = T,
+      ) +
+    geom_text(
+      data = ID3,
+      aes(MDS1, MDS2, label = row.names(ID3)), 
+      size = 2.5,
+      nudge_y = 0.5,
+      check_overlap = T
+      ) +
+    BioR.theme +
+    scale_fill_viridis_d() +
+    labs(
+      fill = expression(delta ^2*H)
+      ) +
+    coord_fixed(ratio=1)
+
+p30
+```
+
+
+```{r echo = F, fig.align = "center"}
+### NMDS con líneas de contorno de los valores de d.excess###
+
+ex <- ordiplot(
+  data.mds, 
+  choices = c(1,2)
+  )
+
+ex.surface3 <- ordisurf(
+  ex, 
+  datos4[-c(348, 583, 42),]$d.excess, 
+  add = T, 
+  nlevels = 30
+  )
+
+ex.grid3 <- ordisurfgrid.long(
+  ex.surface3
+  )
+
+p31 <- ggplot() + 
+    geom_contour_filled(
+      data=ex.grid3,
+      aes(x=x, y=y, z=z)
+      ) +
+    geom_vline(
+      xintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +
+    geom_hline(
+      yintercept = c(0), 
+      color = "grey70", 
+      linetype = 2
+      ) +  
+    scale_x_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    scale_y_continuous(
+      sec.axis = dup_axis(labels=NULL, name=NULL)
+      ) +
+    geom_point(
+      data=sites.long2, 
+      aes(x=axis1, y=axis2),
+      alpha = 0.5, 
+      pch = 16
+      ) +
+    labs(x = "NMDS1", 
+         y = "NMDS2"
+      ) +
+    geom_text(
+      data = ID2,
+      aes(MDS1, MDS2, label = row.names(ID2)), 
+      size = 2.5,
+      nudge_y = 0.5,
+      check_overlap = T,
+      ) +
+    geom_text(
+      data = ID3,
+      aes(MDS1, MDS2, label = row.names(ID3)), 
+      size = 2.5,
+      nudge_y = 0.5,
+      check_overlap = T
+      ) +
+    BioR.theme +
+    scale_fill_viridis_d() +
+    labs(
+      fill = "d.excess"
+      ) +
+    coord_fixed(ratio=1)
+
+p31
+```
+
+## **Análisis de agrupamiento**
+
+```{r echo = F}
+library(gclus)
+library(cluster)
+
+dist.euc <- vegdist(
+  datos4[,c(3:5)], "euc"
+  )
+
+isotopes.ward <- hclust(
+  dist.euc,
+  method = "ward.D2"
+  )
+
+cluster2 <- cutree(
+  isotopes.ward,
+  k = 2
+  )
+
+cluster3 <- cutree(
+  isotopes.ward,
+  k = 3
+  )
+
+cluster4 <- cutree(
+  isotopes.ward,
+  k = 4
+  )
+
+cluster5 <- cutree(
+  isotopes.ward,
+  k = 5
+  )
+coord <- datos4[,c(2,1)]
+
+coord <- cbind(
+  coord, 
+  as.factor(cluster2), 
+  as.factor(cluster3),
+  as.factor(cluster4)
+)
+```
+
+
+```{r echo = F, fig.align = "center"}
+
+p32 <- ggplot(
+    data = coord,
+    aes(x = Lod_Longitud_F5, y = Lod_Latitud_F5, color = as.factor(cluster2))
+  ) +
+geom_point(
+    size = 2,
+    alpha = 0.5,
+    pch = 16
+  ) +
+  
+  labs(
+    title = "Análisis de agrupamiento con k = 2",
+    x = "Longitud (km)",
+    y = "Latitud (km)"
+  ) +
+theme_bw()
+
+p32
+```
+
+```{r echo = F, fig.align = "center"}
+
+p33 <- ggplot(
+    data = coord,
+    aes(x = Lod_Longitud_F5, y = Lod_Latitud_F5, color = as.factor(cluster3))
+  ) +
+geom_point(
+    size = 2,
+    alpha = 0.5,
+    pch = 16
+  ) +
+  geom_text(
+    data = coord %>% filter(as.factor(cluster3) == 2 | as.factor(cluster3) == 3),
+    aes(label = row.names(coord %>% filter(as.factor(cluster3) == 2 | as.factor(cluster3) == 3))),
+    col = "black",
+    size = 2.5,
+    nudge_y = 0.5,
+    check_overlap = T,
+  ) +
+  labs(
+    title = "Análisis de agrupamiento con k = 3",
+    x = "Longitud (km)",
+    y = "Latitud (km)"
+  ) +
+theme_bw()
+
+p33
+```
+
+```{r echo = F, fig.align = "center"}
+
+p34 <- ggplot(
+    data = coord,
+    aes(x = Lod_Longitud_F5, y = Lod_Latitud_F5, color = as.factor(cluster4))
+  ) +
+geom_point(
+    size = 2,
+    alpha = 0.5,
+    pch = 16
+  ) +
+  geom_text(
+    data = coord %>% filter(as.factor(cluster4) == 3 | as.factor(cluster4) == 4),
+    aes(label = row.names(coord %>% filter(as.factor(cluster4) == 3 | as.factor(cluster4) == 4))),
+    col = "black",
+    size = 2.5,
+    nudge_y = 0.5,
+    check_overlap = T,
+  ) +
+  labs(
+    title = "Análisis de agrupamiento con k = 4",
+    x = "Longitud (km)",
+    y = "Latitud (km)"
+  ) +
+theme_bw()
+
+p34
+```
+
+
+
+
+
+
+
