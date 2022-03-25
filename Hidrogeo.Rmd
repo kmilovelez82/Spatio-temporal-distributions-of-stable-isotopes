@@ -2,11 +2,11 @@
 title: "Groundwater recharge processes inferred from isoscapes in the Buenos Aires Province, Argentina"
 author: "Mauricio Quiroz, Asunción Romanelli and Camilo Vélez"
 date: "07/12/2021"
-output: 
-html_document:
-  toc: true
-  toc_float: true
-  theme: darkly
+output:
+  html_notebook:
+   code_folding: "show"
+   toc: yes
+   toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -19,38 +19,62 @@ library(gridExtra)
 library(rstatix)
 ```
 
+# **Análisis descriptivos**
 
-## **Análisis descriptivos**    
+## Importar base de datos ##
 
-### **Importar base de datos**
 ```{r}
 datos <- read.csv("datos.csv", header = T, dec = ".", sep = ",")
 ```
 
 ```{r echo = FALSE}
-kable(datos, align = "ccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),   full_width = F) %>% 
-  scroll_box(height = "300px", width = "900px")
+kable(
+  datos, 
+  align = "ccccc"
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = F
+    ) %>% 
+  scroll_box(
+    height = "300px", 
+    width = "900px"
+    )
 ```
 
-### **Resumen estadístico**
+## Resumen estadístico ##
 
 ```{r echo = F}
-r.sta <- rstatix::get_summary_stats(datos[,c(6:9)], type = "full", show = c("n", "min", "max", "mean", "median", "iqr", "sd", "se", "ci"))
+r.sta <- rstatix::get_summary_stats(
+  datos[,c(6:9)], 
+  type = "full", 
+  show = c("n", "min", "max", "mean", "median", "iqr", "sd", "se", "ci")
+  )
+
 r.sta <- r.sta[c(1,3,4,2),]
 
-CV <- sapply(datos[,c(6:9)], function(x) sd(x, na.rm=T) / mean(x, na.rm=T) * 100)##función para calcular el coeficiente de variación por columna#
+CV <- sapply(
+  datos[,c(6:9)], function(x) sd(x, na.rm=T) / mean(x, na.rm=T) * 100)##función para calcular el coeficiente de variación por columna#
+
 CV <- as.data.frame(abs(CV))
 
 r.sta$CV <- CV$`abs(CV)`
 
 col <- c("Variable", "n", "Min", "Max", "Media", "Mediana", "IQR", "DS", "E.St", "I.C", "CV")
 
-kable(r.sta, digits = 1, align = "lcccccccccc", col.names = col) %>% 
-  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+kable(
+  r.sta, 
+  digits = 1, 
+  align = "lcccccccccc", 
+  col.names = col
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover"), 
+    full_width = F
+    )
 ```
 
-## **Sitios con múltiples mediciones**
+## Sitios con múltiples mediciones ##
 
 ```{r echo = FALSE}
 
@@ -68,12 +92,33 @@ p1 <- gridExtra::tableGrob(tabla3, rows = NULL)
 
 ```{r echo = FALSE}
 
-p2 <- ggplot(tabla2, aes(x = Var1, y = Freq)) + 
-  geom_col(stat = "identity") + 
-  scale_y_continuous(limit = c(0,13), breaks = c(4, 6, 8, 10, 12)) + 
-  scale_x_discrete(limits = tabla2$Var1, labels = NULL) + 
-  geom_text(aes(label = Var1), vjust = -0.2, angle = 45, nudge_y = 0.4,   nudge_x = 0.5, size = 3) +
-  labs(x = "Sitios de muestreo", y = "") +
+p2 <- ggplot(
+  tabla2, 
+  aes(x = Var1, y = Freq)
+  ) + 
+  geom_col(
+    stat = "identity"
+    ) + 
+  scale_y_continuous(
+    limit = c(0,13), 
+    breaks = c(4, 6, 8, 10, 12)
+    ) + 
+  scale_x_discrete(
+    limits = tabla2$Var1, 
+    labels = NULL
+    ) + 
+  geom_text(
+    aes(label = Var1), 
+    vjust = -0.2, 
+    angle = 45, 
+    nudge_y = 0.4,   
+    nudge_x = 0.5, 
+    size = 3
+    ) +
+  labs(
+    x = "Sitios de muestreo", 
+    y = ""
+    ) +
   theme_classic()
 ```
 
@@ -90,8 +135,8 @@ datos2 <- datos %>%
   filter(Estacion_Id %in% c("G073", "G194", "G020", "G195", "G196", "G156", "G792", "G793", "G794", "G827", "G071", "G1133", "G178", "G179", "G220"))
 ```
 
+## Datos atípicos en sitios con más de seis mediciones ##
 
-### **Datos atípicos en sitios con más de seis mediciones**
 En este caso, la detección de valores atípicos permiten llevar un control de la reproducibilidad de los métodos utilizados en la cuantificación de las variables.
 
 ```{r echo = F}
@@ -155,14 +200,24 @@ grid.arrange(p3, p4, p5, p6, nrow = 4, ncol = 1)
 
 ```{r echo = FALSE}
 
-kable(outliers, digits = 1, align = "cccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = T) %>% 
-  scroll_box(height = "300px", width = "900px")
+kable(
+  outliers, 
+  digits = 1, 
+  align = "cccccc"
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+    full_width = T
+    ) %>% 
+  scroll_box(
+    height = "300px",
+    width = "900px"
+    )
 ```
 
-### **Detección de valores atípicos en la base de datos completa**
+## Detección de valores atípicos en la base de datos completa ##
 
-Se detectaron 20 datos atípicos en aquellos sitios que muestras más de cinco mediciones. De este modo la matriz pasa de 1139 a tener 1119 datos. A continuación se busca encontrar valores extremos utilizando la base completa.
+Se detectaron 20 datos atípicos en aquellos sitios que muestran más de cinco mediciones. De este modo la matriz pasa de 1139 a tener 1119 datos. A continuación se busca encontrar valores extremos utilizando la base completa.
 
 ```{r, echo = F}
 datos3 <- datos %>% 
@@ -190,22 +245,30 @@ p7 <- ggplot(data = datos3 %>% filter(Conductividad < 2800), aes(x = Sitios, y =
 
 ```
 
-<div class = "row">
-<div class = "col-md-6">
-```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
-kable(Cond.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left") %>% 
-  scroll_box(height = "300px", width = "450px")
+::: row
+::: col-md-6
+```{r echo = F}
+kable(
+  Cond.outliers2[,-7], 
+  digits = 1, 
+  align = "lcccccc"
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    full_width = F, 
+    position = "float_left") %>% 
+  scroll_box(
+    height = "300px", 
+    width = "350px")
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 p7 ###outliers conductividad###
 ```
-</div>
-</div>
-
+:::
+:::
 
 **Oxígeno-18**
 
@@ -227,22 +290,31 @@ p8 <- ggplot(data = datos3 %>% filter(between(X18O, -8.10, -2.48)), aes(x = Siti
 
 ```
 
-<div class = "row">
-<div class = "col-md-6">
-```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
-kable(X18O.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
-  scroll_box(height = "300px", width = "450px")
+::: row
+::: col-md-6
+```{r echo = F}
+kable(
+  X18O.outliers2[,-7], 
+  digits = 1, 
+  align = "lcccccc"
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    full_width = F, 
+    position = "float_left"
+    )%>% 
+  scroll_box(
+    height = "300px", 
+    width = "350px")
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 p8 ###outliers oxígeno 18###
 ```
-</div>
-</div>
-
+:::
+:::
 
 **Hidrógeno-2**
 
@@ -264,22 +336,31 @@ p9 <- ggplot(data = datos3 %>% filter(between(X2H, -50.40, -7.30)), aes(x = Siti
 
 ```
 
-<div class = "row">
-<div class = "col-md-6">
-```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
-kable(X2H.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
-  scroll_box(height = "300px", width = "450px")
+::: row
+::: col-md-6
+```{r echo = F}
+kable(
+  X2H.outliers2[,-7], 
+  digits = 1, 
+  align = "lcccccc"
+  ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    full_width = F, 
+    position = "float_left"
+    )%>% 
+  scroll_box(
+    height = "300px",
+    width = "350px")
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 p9 ###outliers deuterio###
 ```
-</div>
-</div>
-
+:::
+:::
 
 **Exceso**
 
@@ -301,30 +382,39 @@ p10 <- ggplot(data = datos3 %>% filter(between(d.excess, -0.60, 27.08)), aes(x =
 
 ```
 
-<div class = "row">
-<div class = "col-md-6">
-```{r echo = F, fig.width = 5, fig.height = 5, fig.align = "right"}
-kable(excess.outliers2[,-7], digits = 1, align = "lcccccc") %>% 
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F, position = "float_left")%>% 
-  scroll_box(height = "300px", width = "450px")
+::: row
+::: col-md-6
+```{r echo = F}
+kable(excess.outliers2[,-7], 
+      digits = 1, 
+      align = "lcccccc"
+      ) %>% 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    full_width = F, 
+    position = "float_left"
+    )%>% 
+  scroll_box(
+    height = "300px",
+    width = "350px")
   
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 p10 ###outliers exceso###
 ```
-</div>
-</div>
+:::
+:::
 
+# **Pruebas de normalidad (Shapiro-Wilks) por variable excluyendo los valores extremos** #
 
-### **Pruebas de normalidad (Shapiro-Wilks) por variable excluyendo los valores extremos**
+## Conductividad ##
 
-#### Conductividad
-La prueba de Shapiro y el gráfico de cuantiles muestra que esta variable no se ajusta a una distribución normal a pesar de eliminar los valores extremos.
+La prueba de Shapiro y el gráfico de cuantiles muestra que esta variable no se ajusta a una distribución normal aunque se eliminen los valores extremos.
 
-```{r echo = F}
+```{r echo = F, message=FALSE}
 
 ##Boxplot##
 p11 <- ggplot(
@@ -408,11 +498,11 @@ p13 <- ggqqplot(
 
 ```
 
-```{r fig.width = 12, fig.height = 3}
+```{r message=FALSE, fig.width = 12, fig.height = 3}
 grid.arrange(p11, p12, p13, ncol = 3, nrow = 1)
 ```
 
-#### Oxígeno-18
+## Oxígeno-18 ##
 
 ```{r echo = F}
 
@@ -498,11 +588,11 @@ p16 <- ggqqplot(
 
 ```
 
-```{r fig.width = 12, fig.height = 3}
+```{r warning = F, fig.width = 12, fig.height = 3}
 grid.arrange(p14, p15, p16, ncol = 3, nrow = 1)
 ```
 
-#### Hidrógeno-2
+## Hidrógeno-2 ##
 
 ```{r echo = F}
 
@@ -592,8 +682,7 @@ p19 <- ggqqplot(
 grid.arrange(p17, p18, p19, ncol = 3, nrow = 1)
 ```
 
-
-#### Exceso...
+## Exceso ##
 
 ```{r echo = F}
 
@@ -682,9 +771,9 @@ p22 <- ggqqplot(
 grid.arrange(p20, p21, p22, ncol = 3, nrow = 1)
 ```
 
-## **Análisis de Correlación**
+# **Análisis de Correlación** #
 
-```{r echo = F, fig.align = "center"}
+```{r echo = F, fig.align = "center", results="hide"}
 library(GGally)
 
 reg1 <- datos3 %>% 
@@ -722,8 +811,7 @@ p23 <- ggpairs(
   diag = list(continuous = wrap("barDiag", color = "white", fill = "#E69F00")), 
   axisLabels = "none",
   title = "Filtrando la base de datos por conductividad: 609 datos"
-  ) +
-  theme_bw()
+  ) 
 
 p23
 
@@ -733,27 +821,26 @@ p24 <- ggpairs(
   diag = list(continuous = wrap("barDiag", color = "white", fill = "#E69F00")), 
   axisLabels = "none",
   title = "Sin la variable conductividad: 1083 datos"
-  ) +
-  theme_bw()
+  ) 
 
 p24
 
 ```
 
-## **Análisis de Regresión**
+# **Análisis de Regresión** #
 
-### Modelo de Regresión Hidrógeno-2 vs Oxígeno-18
+## Modelo de Regresión Hidrógeno-2 vs Oxígeno-18 ##
 
-```{r echo = F, fig.align = "center"}
+```{r echo = F, message=FALSE, fig.align = "center"}
 library(ggstatsplot)
 library(ggfortify) ##gráficos para corroborar los supuestos del modelo##
 library(ggside)
 library(gdata) ## cbin para vectores desiguales##
 ```
 
-<div class = "row">
-  <div class = "col-md-6">
-```{r echo = F, fig.align = "center"}
+::: row
+::: col-md-6
+```{r echo = F, message=FALSE, fig.align = "center"}
 p25 <- ggscatterstats(
   data = reg2,
   x = X18O,
@@ -769,9 +856,9 @@ p25 <- ggscatterstats(
 
 p25
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 model1 <- lm(data = reg2, X2H ~ X18O)
 
@@ -786,10 +873,10 @@ p26 <- autoplot(
 
 p26
 ```
-</div>
-</div>
+:::
+:::
 
-```{r echo = F}
+```{r echo = F, message=FALSE}
 library(stargazer)
 
 stargazer(
@@ -800,10 +887,10 @@ stargazer(
   single.row = T)
 ```
 
-### Modelo de Regresión d-excess vs Oxígeno-18
+## Modelo de Regresión d-excess vs Oxígeno-18 ##
 
-<div class = "row">
-  <div class = "col-md-6">
+::: row
+::: col-md-6
 ```{r echo = F, fig.align = "center"}
 p27 <- ggscatterstats(
   data = reg2,
@@ -820,9 +907,9 @@ p27 <- ggscatterstats(
 
 p27
 ```
-</div>
+:::
 
-<div class = "col-md-6">
+::: col-md-6
 ```{r echo = F}
 model2 <- lm(data = reg2, d.excess ~ X18O)
 
@@ -837,8 +924,8 @@ p28 <- autoplot(
 
 p28
 ```
-</div>
-</div>
+:::
+:::
 
 ```{r echo = F}
 stargazer(
@@ -849,7 +936,7 @@ stargazer(
   single.row = T)
 ```
 
-## **Non-Metric Dimensional Scaling (NMDS)**
+# **Non-Metric Dimensional Scaling (NMDS)** #
 
 ```{r echo = F}
 library(vegan)
@@ -873,8 +960,7 @@ BioR.theme <- theme(
   legend.key = element_blank())
 ```
 
-
-```{r echo = F, fig.align = "center"}
+```{r echo = FALSE, results = FALSE, fig.align = "center"}
 datos4 <- datos[,c(1,3,4,7:9)]
 datos4 <- aggregate(
   . ~ Estacion_Id, 
@@ -984,7 +1070,6 @@ p29 <- ggplot() +
 p29
 ```
 
-
 ```{r echo = F, fig.align = "center"}
 ### NMDS con líneas de contorno de los valores de hidrógeno-2###
 ex <- ordiplot(
@@ -1056,7 +1141,6 @@ p30 <- ggplot() +
 
 p30
 ```
-
 
 ```{r echo = F, fig.align = "center"}
 ### NMDS con líneas de contorno de los valores de d.excess###
@@ -1131,9 +1215,9 @@ p31 <- ggplot() +
 p31
 ```
 
-## **Análisis de agrupamiento**
+# **Análisis de agrupamiento** #
 
-```{r echo = F}
+```{r echo = F, message=FALSE}
 library(gclus)
 library(cluster)
 
@@ -1174,7 +1258,6 @@ coord <- cbind(
   as.factor(cluster4)
 )
 ```
-
 
 ```{r echo = F, fig.align = "center"}
 
@@ -1255,6 +1338,211 @@ theme_bw()
 
 p34
 ```
+
+# **Mapas coropléticos o coropletas** #
+
+```{r echo=FALSE, message=FALSE}
+library(sp)
+library(rgdal)
+library(rgeos)
+library(tmap)
+
+#Carga las capas de áreas#
+Capa.Areas<- readOGR(".", "Bsas_municipios")
+```
+
+```{r echo = FALSE}
+
+#Crear un SpatialPointsDataFrame#
+data.points <- SpatialPointsDataFrame(
+  datos4[, c(2: 1)], 
+  datos4, 
+  proj4string = CRS("+init=EPSG:22195")
+  )
+```
+
+```{r Mapa.O18, echo=FALSE}
+
+tm_shape(
+  Capa.Areas,
+  ) + 
+  tm_borders(
+    alpha = 0.4
+  ) +
+  tm_shape(
+    data.points
+  ) +
+  tm_dots(
+    col = "X18O",
+    palette = "BuPu",
+    midpoint = 0,
+    style = "quantile",
+    size = 0.1,
+    legend.hist = TRUE,
+    colorNA = "red",
+    title = expression(bold(delta ^18*O))
+  ) +
+  tm_layout(
+    legend.text.size = 1.1,
+    legend.title.size = 1.5,
+    legend.hist.width = 5,
+    frame = FALSE, 
+    legend.outside = TRUE,
+    ) +
+  tm_grid(
+    alpha = 0, 
+    labels.size = 0.7, 
+    labels.rot= c(0,90), 
+    labels.margin.y = 0, 
+    labels.inside.frame = F
+    ) +
+    tm_compass(
+    type = "8star", 
+    position = c("right","bottom"), 
+    size = 2, 
+    show.labels = 2
+    )
+```
+
+```{r Mapa.X2H, echo=FALSE}
+
+tm_shape(
+  Capa.Areas,
+  ) + 
+  tm_borders(
+    alpha = 0.4
+  ) +
+  tm_shape(
+    data.points
+  ) +
+  tm_dots(
+    col = "X2H",
+    palette = "Reds",
+    midpoint = 0,
+    style = "quantile",
+    size = 0.1,
+    legend.hist = TRUE,
+    colorNA = "red",
+    title = expression(bold(delta ^2*H))
+  ) +
+  tm_layout(
+    legend.text.size = 1.1,
+    legend.title.size = 1.5,
+    legend.hist.width = 5,
+    frame = FALSE, 
+    legend.outside = TRUE,
+    ) +
+  tm_grid(
+    alpha = 0, 
+    labels.size = 0.7, 
+    labels.rot= c(0,90), 
+    labels.margin.y = 0, 
+    labels.inside.frame = F
+    ) +
+    tm_compass(
+    type = "8star", 
+    position = c("right","bottom"), 
+    size = 2, 
+    show.labels = 2
+    )
+
+```
+
+```{r Mapa.exceso, echo=FALSE}
+
+tm_shape(
+  Capa.Areas,
+  ) + 
+  tm_borders(
+    alpha = 0.4
+  ) +
+  tm_shape(
+    data.points
+  ) +
+  tm_dots(
+    col = "d.excess",
+    palette = "Greens",
+    style = "quantile",
+    midpoint = 0,
+    size = 0.1,
+    legend.hist = TRUE,
+    colorNA = "red",
+    title = "d.excess"
+  ) +
+  tm_layout(
+    legend.text.size = 1.1,
+    legend.title.size = 1.5,
+    legend.hist.width = 5,
+    frame = FALSE, 
+    legend.outside = TRUE,
+    ) +
+  tm_grid(
+    alpha = 0, 
+    labels.size = 0.7, 
+    labels.rot= c(0,90), 
+    labels.margin.y = 0, 
+    labels.inside.frame = F
+    ) +
+    tm_compass(
+    type = "8star", 
+    position = c("right","bottom"), 
+    size = 2, 
+    show.labels = 2
+    )
+
+```
+
+# **Mapas de símbolos proporcionales** #
+
+```{r Bubble.map.O18, echo=FALSE}
+tm_shape(
+  Capa.Areas,
+  ) + 
+  tm_borders(
+    alpha = 0.4
+  ) +
+  tm_shape(
+    data.points
+  ) +
+  tm_bubbles(
+    size = "X18O",
+    col = "X18O",
+    midpoint = 0,
+    palette = "Blues",
+    style = "fixed",
+    breaks = c(-12, -8, -4, 0, 4)
+  ) 
+```
+
+# **Buffering** #
+
+```{r}
+buffer.points <- gBuffer(data.points, width = 10000, byid = TRUE)
+```
+
+```{r}
+tm_shape(
+  Capa.Areas
+  ) +
+  tm_borders() +
+  tm_shape(buffer.points) + 
+  tm_borders(col = "blue") +
+tm_shape(data.points) + tm_dots(col = "red")
+```
+
+```{r}
+union.buffer <- gUnaryUnion(buffer.points)
+```
+
+```{r}
+windows()
+tm_shape(Capa.Areas) + tm_borders() +
+tm_shape(union.buffer) + tm_fill(col = "blue", alpha = 0.4) + tm_borders(col = "blue") +
+tm_shape(data.points) + tm_dots(col = "red")
+```
+
+
+
 
 
 
